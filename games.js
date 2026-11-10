@@ -15,6 +15,8 @@ const games = {
   pong: { title: '🏓 Pong', render: renderPong },
   quiz: { title: '❓ Quiz', render: renderQuiz },
   aim: { title: '🎯 Aim Trainer', render: renderAim },
+  g2048: { title: '🔢 2048', render: render2048 },
+  breakout: { title: '🧱 Breakout', render: renderBreakout },
   tttonline: { title: '🌐 Tic-Tac-Toe Online', render: (c) => renderOnlineGame(c, 'ttt') },
   memonline: { title: '🌐 Memory Online', render: (c) => renderOnlineGame(c, 'mem') },
 };
@@ -1143,4 +1145,298 @@ function renderAim(container) {
       }
     }, 1000);
   };
+}
+
+// ===== 10. 2048 =====
+function render2048(container) {
+  const SIZE = 4;
+  let board, score = 0, best = +(localStorage.getItem('best2048') || 0), over = false, won = false;
+
+  const hud = document.createElement('div');
+  hud.className = 'g2048-hud';
+  hud.innerHTML = `<span>Punteggio: <b id="s2048-score">0</b></span><span>Record: <b id="s2048-best">${best}</b></span>`;
+  container.appendChild(hud);
+
+  const gridEl = document.createElement('div');
+  gridEl.className = 'g2048-grid';
+  container.appendChild(gridEl);
+
+  const msgEl = document.createElement('div');
+  msgEl.className = 'g2048-msg';
+  container.appendChild(msgEl);
+
+  function newGame() {
+    board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+    score = 0; over = false; won = false;
+    spawn(); spawn();
+    render();
+  }
+
+  function spawn() {
+    const empty = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++)
+      if (!board[r][c]) empty.push([r, c]);
+    if (!empty.length) return;
+    const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+    board[r][c] = Math.random() < 0.9 ? 2 : 4;
+  }
+
+  function slideRow(row) {
+    const vals = row.filter(v => v);
+    const out = [];
+    let gained = 0;
+    for (let i = 0; i < vals.length; i++) {
+      if (vals[i] === vals[i + 1]) {
+        out.push(vals[i] * 2); gained += vals[i] * 2; i++;
+      } else out.push(vals[i]);
+    }
+    while (out.length < SIZE) out.push(0);
+    return { row: out, gained };
+  }
+
+  function move(dir) {
+    if (over) return;
+    let gained = 0, moved = false;
+    const nb = board.map(r => r.slice());
+    for (let i = 0; i < SIZE; i++) {
+      let line;
+      if (dir === 'left') line = nb[i];
+      else if (dir === 'right') line = nb[i].slice().reverse();
+      else if (dir === 'up') line = nb.map(r => r[i]);
+      else line = nb.map(r => r[i]).reverse();
+      const res = slideRow(line);
+      gained += res.gained;
+      const final = dir === 'right' || dir === 'down' ? res.row.slice().reverse() : res.row;
+      for (let j = 0; j < SIZE; j++) {
+        const r = (dir === 'up' || dir === 'down') ? j : i;
+        const c = (dir === 'up' || dir === 'down') ? i : j;
+        if (nb[r][c] !== final[j]) moved = true;
+        nb[r][c] = final[j];
+      }
+    }
+    if (!moved) return;
+    board = nb;
+    score += gained;
+    if (score > best) { best = score; localStorage.setItem('best2048', best); }
+    spawn();
+    checkEnd();
+    render();
+  }
+
+  function checkEnd() {
+    if (board.flat().includes(2048) && !won) { won = true; }
+    const full = board.every(r => r.every(v => v));
+    if (!full) return;
+    const canMove = board.some((r, i) => r.some((v, j) =>
+      v === board[i][j+1] || v === board[i+1]?.[j]));
+    if (!canMove) over = true;
+  }
+
+  function render() {
+    document.getElementById('s2048-score').textContent = score;
+    document.getElementById('s2048-best').textContent = best;
+    gridEl.innerHTML = '';
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'g2048-cell';
+      const v = board[r][c];
+      if (v) {
+        const t = document.createElement('div');
+        t.className = 'g2048-tile v' + v;
+        t.textContent = v;
+        cell.appendChild(t);
+      }
+      gridEl.appendChild(cell);
+    }
+    if (over) {
+      msgEl.innerHTML = `Game Over! Punteggio: <b>${score}</b>`;
+      const btn = document.createElement('button');
+      btn.className = 'primary'; btn.textContent = 'Rigioca'; btn.style.marginTop = '0.8rem';
+      btn.onclick = newGame;
+      msgEl.appendChild(btn);
+    } else if (won) {
+      msgEl.innerHTML = '🎉 Hai raggiunto <b>2048</b>! Continua per il record.';
+      won = false;
+    } else msgEl.innerHTML = '';
+  }
+
+  const keyMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
+  function onKey(e) {
+    const d = keyMap[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+    if (d) { e.preventDefault(); move(d); }
+  }
+  document.addEventListener('keydown', onKey);
+
+  let tx = 0, ty = 0;
+  gridEl.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+  gridEl.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+    if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  });
+
+  newGame();
+}
+
+// ===== 11. BREAKOUT =====
+function renderBreakout(container) {
+  const W = 640, H = 480;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  container.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  const hud = document.createElement('div');
+  hud.className = 'breakout-hud';
+  hud.innerHTML = '<span>Punteggio: <b id="bo-score">0</b></span><span>Vite: <b id="bo-lives">3</b></span><span>Livello: <b id="bo-level">1</b></span>';
+  container.prepend(hud);
+
+  const ROWS = 6, COLS = 10, BW = W / COLS, BH = 22, TOP = 50;
+  const COLORS = ['#ff2d78', '#ff7a45', '#ffd166', '#00ff88', '#00e5ff', '#8b5cf6'];
+  let bricks, ball, paddle, score, lives, level, running, loop, particles = [], stuck = true;
+
+  function buildBricks() {
+    bricks = [];
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        bricks.push({ x: c * BW + 2, y: TOP + r * (BH + 4), w: BW - 4, h: BH, color: COLORS[r], alive: true, hp: level > 1 && r < 2 ? 2 : 1 });
+  }
+
+  function reset() {
+    paddle = { x: W / 2 - 50, w: 100, h: 12, y: H - 30 };
+    ball = { x: W / 2, y: H - 50, vx: 4 * (Math.random() < 0.5 ? -1 : 1), vy: -5, r: 7 };
+    stuck = true;
+  }
+
+  function newGame() {
+    score = 0; lives = 3; level = 1;
+    buildBricks(); reset(); running = true;
+    document.getElementById('bo-score').textContent = 0;
+    document.getElementById('bo-lives').textContent = 3;
+    document.getElementById('bo-level').textContent = 1;
+  }
+
+  function burst(x, y, color, n = 10) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 3;
+      particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, color });
+    }
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const r = canvas.getBoundingClientRect();
+    paddle.x = Math.max(0, Math.min(W - paddle.w, (e.clientX - r.left) * (W / r.width) - paddle.w / 2));
+  });
+  canvas.addEventListener('click', () => { if (stuck) stuck = false; });
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    paddle.x = Math.max(0, Math.min(W - paddle.w, (e.touches[0].clientX - r.left) * (W / r.width) - paddle.w / 2));
+  }, { passive: false });
+
+  function tick() {
+    if (!running) return;
+    if (!stuck) {
+      ball.x += ball.vx; ball.y += ball.vy;
+      // muri
+      if (ball.x - ball.r < 0 || ball.x + ball.r > W) { ball.vx *= -1; ball.x = Math.max(ball.r, Math.min(W - ball.r, ball.x)); burst(ball.x, ball.y, '#fff', 5); }
+      if (ball.y - ball.r < 0) { ball.vy *= -1; ball.y = ball.r; }
+      // paddle
+      if (ball.vy > 0 && ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h && ball.x >= paddle.x && ball.x <= paddle.x + paddle.w) {
+        const hit = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+        ball.vy = -Math.abs(ball.vy) * 1.02;
+        ball.vx = hit * 6;
+        ball.y = paddle.y - ball.r;
+        burst(ball.x, ball.y, '#00e5ff', 6);
+      }
+      // mattoni
+      for (const b of bricks) {
+        if (!b.alive) continue;
+        if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w && ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+          b.hp--;
+          if (b.hp <= 0) {
+            b.alive = false;
+            score += 10; burst(b.x + b.w / 2, b.y + b.h / 2, b.color, 12);
+          } else burst(ball.x, ball.y, '#ffd166', 6);
+          ball.vy *= -1;
+          document.getElementById('bo-score').textContent = score;
+          break;
+        }
+      }
+      // palla persa
+      if (ball.y - ball.r > H) {
+        lives--;
+        document.getElementById('bo-lives').textContent = lives;
+        burst(W / 2, H - 10, '#ff2d78', 20);
+        if (lives <= 0) { gameOver(); return; }
+        reset();
+      }
+      // livello completato
+      if (bricks.every(b => !b.alive)) {
+        level++;
+        document.getElementById('bo-level').textContent = level;
+        buildBricks(); reset();
+        ball.vx *= 1.15; ball.vy *= 1.1;
+      }
+    } else {
+      ball.x = paddle.x + paddle.w / 2;
+      ball.y = paddle.y - ball.r - 1;
+    }
+
+    // particelle
+    particles = particles.filter(p => p.life > 0);
+    particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life -= 0.03; });
+
+    // disegno
+    ctx.fillStyle = '#080a14'; ctx.fillRect(0, 0, W, H);
+    // mattoni con glow
+    bricks.forEach(b => {
+      if (!b.alive) return;
+      ctx.shadowBlur = 8; ctx.shadowColor = b.color;
+      ctx.fillStyle = b.hp > 1 ? '#ffd166' : b.color;
+      ctx.beginPath(); ctx.roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+    // particelle
+    particles.forEach(p => {
+      ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    // paddle
+    ctx.shadowBlur = 15; ctx.shadowColor = '#00e5ff';
+    ctx.fillStyle = '#00e5ff';
+    ctx.beginPath(); ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 6); ctx.fill();
+    ctx.shadowBlur = 0;
+    // palla
+    ctx.shadowBlur = 15; ctx.shadowColor = '#fff';
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (stuck) {
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = '16px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Clicca o premi SPAZIO per lanciare', W / 2, H / 2);
+    }
+  }
+
+  function gameOver() {
+    running = false; clearInterval(loop);
+    ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff'; ctx.font = '32px Orbitron, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', W / 2, H / 2 - 10);
+    ctx.font = '18px Inter, sans-serif';
+    ctx.fillText(`Punteggio: ${score} — Livello: ${level}`, W / 2, H / 2 + 30);
+    const btn = document.createElement('button');
+    btn.className = 'primary'; btn.textContent = 'Rigioca';
+    btn.onclick = () => { container.querySelectorAll('button').forEach(b => b.remove()); renderBreakout(container); };
+    container.appendChild(btn);
+  }
+
+  document.addEventListener('keydown', function spaceHandler(e) {
+    if (e.code === 'Space' && stuck && running) { stuck = false; e.preventDefault(); }
+  });
+
+  newGame();
+  loop = setInterval(tick, 1000 / 60);
 }
