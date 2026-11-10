@@ -101,12 +101,22 @@ function renderSnake(container) {
       food = spawnFood();
     } else snake.pop();
 
-    ctx.fillStyle = '#0d0d1a'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = '#e94560';
+    ctx.fillStyle = '#080a14'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle = 'rgba(0,229,255,0.05)'; ctx.lineWidth = 1;
+    for (let i = 1; i < cells; i++) {
+      ctx.beginPath(); ctx.moveTo(i*size,0); ctx.lineTo(i*size,canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,i*size); ctx.lineTo(canvas.width,i*size); ctx.stroke();
+    }
+    ctx.shadowBlur = 12; ctx.shadowColor = '#e94560';
+    ctx.fillStyle = '#ff2d78';
     ctx.beginPath(); ctx.arc(food.x*size+size/2, food.y*size+size/2, size/2-2, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
     snake.forEach((s,i) => {
-      ctx.fillStyle = i===0 ? '#7ec8ff' : `hsl(140, 60%, ${50 - i*1.5}%)`;
-      ctx.fillRect(s.x*size+1, s.y*size+1, size-2, size-2);
+      ctx.fillStyle = i===0 ? '#00e5ff' : `hsl(160, 70%, ${55 - i*1.5}%)`;
+      const pad = i===0 ? 1 : 2;
+      ctx.beginPath();
+      ctx.roundRect(s.x*size+pad, s.y*size+pad, size-pad*2, size-pad*2, 5);
+      ctx.fill();
     });
   }
 
