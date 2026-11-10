@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Giochi Arcade</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>🎮 Mini Giochi Arcade</h1>
+  <p>Scegli un gioco e divertiti!</p>
+</header>
+
+<main>
+  <section id="menu" class="menu">
+    <div class="game-card" data-game="snake">
+      <div class="icon">🐍</div>
+      <h2>Snake</h2>
+      <p>Guida il serpente, mangia le mele e non sbattere ai muri!</p>
+      <span class="badge solo">Solo</span>
+    </div>
+    <div class="game-card" data-game="memory">
+      <div class="icon">🧠</div>
+      <h2>Memory</h2>
+      <p>Trova le coppie di carte. Disponibile in modalità 2 giocatori!</p>
+      <span class="badge coop">Co-op</span>
+    </div>
+    <div class="game-card" data-game="tictactoe">
+      <div class="icon">❌</div>
+      <h2>Tic-Tac-Toe</h2>
+      <p>Il classico tris in 3x3, perfetto da giocare in coppia.</p>
+      <span class="badge coop">Co-op</span>
+    </div>
+    <div class="game-card" data-game="reaction">
+      <div class="icon">⚡</div>
+      <h2>Tempo di Reazione</h2>
+      <p>Clicca il più velocemente possibile quando il colore diventa verde.</p>
+      <span class="badge solo">Solo</span>
+    </div>
+    <div class="game-card" data-game="rps">
+      <div class="icon">✊</div>
+      <h2>Sasso Carta Forbice</h2>
+      <p>Sfida il computer al classico gioco delle mani.</p>
+      <span class="badge solo">Solo</span>
+    </div>
+    <div class="game-card" data-game="whack">
+      <div class="icon">🔨</div>
+      <h2>Whack-a-Mole</h2>
+      <p>Colpisci le talpe che escono dai buchi in 30 secondi!</p>
+      <span class="badge solo">Solo</span>
+    </div>
+    <div class="game-card" data-game="tttonline">
+      <div class="icon">🌐❌</div>
+      <h2>Tic-Tac-Toe Online</h2>
+      <p>Tris contro un amico da un altro dispositivo. Crea una stanza o unisciti con un codice!</p>
+      <span class="badge coop">Online Co-op</span>
+    </div>
+    <div class="game-card" data-game="memonline">
+      <div class="icon">🌐🧠</div>
+      <h2>Memory Online</h2>
+      <p>Memory 2 giocatori in tempo reale con un amico da remoto.</p>
+      <span class="badge coop">Online Co-op</span>
+    </div>
+  </section>
+
+  <section id="game-area" class="game-area hidden">
+    <div class="game-header">
+      <button id="back-btn">← Menu</button>
+      <h2 id="game-title"></h2>
+    </div>
+    <div id="game-container"></div>
+  </section>
+</main>
+
+<footer>
+  <p>Fatto con ❤️ — Gioca con amici sullo stesso dispositivo!</p>
+</footer>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="games.js"></script>
+</body>
+</html>
