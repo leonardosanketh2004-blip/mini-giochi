@@ -267,7 +267,7 @@ function renderTicTacToe(container) {
       const line = wins.find(w => w.every(j => board[j] === current));
       if (line) {
         over = true;
-        line.forEach(j => grid.children[j].style.background = 'rgba(233,69,96,0.4)');
+        line.forEach(j => grid.children[j].classList.add('win'));
         status.textContent = `🎉 Vince ${current === 'X' ? '🔴 X' : '🟡 O'}!`;
       } else if (board.every(Boolean)) {
         over = true;
@@ -357,6 +357,10 @@ function renderRPS(container) {
   buttons.className = 'rps-buttons';
   container.appendChild(buttons);
 
+  const faceoff = document.createElement('div');
+  faceoff.className = 'rps-faceoff';
+  container.appendChild(faceoff);
+
   const result = document.createElement('div');
   result.className = 'rps-result';
   container.appendChild(result);
@@ -371,6 +375,7 @@ function renderRPS(container) {
     b.className = 'rps-btn'; b.textContent = c;
     b.onclick = () => {
       const cpu = Object.keys(choices)[Math.floor(Math.random()*3)];
+      faceoff.innerHTML = `<span style="display:inline-block;animation:faceoffPop .35s cubic-bezier(0.34,1.56,0.64,1)">${c} <span style="opacity:.4;font-size:.6em">VS</span> ${cpu}</span>`;
       let msg;
       if (c === cpu) { draws++; msg = `🤝 Pareggio! Entrambi ${choices[c]}`; }
       else if (beats[c] === cpu) { playerScore++; msg = `🎉 Vinci! ${choices[c]} batte ${choices[cpu]}`; }
@@ -405,6 +410,10 @@ function renderWhack(container) {
         hole.classList.add('hit');
         setTimeout(() => hole.classList.remove('hit'), 150);
         hole.classList.remove('active');
+        const pop = document.createElement('span');
+        pop.className = 'whack-pop'; pop.textContent = '+1';
+        hole.appendChild(pop);
+        setTimeout(() => pop.remove(), 700);
       }
     });
     grid.appendChild(hole);
@@ -693,6 +702,10 @@ function initTTTOnline(container, sess, role, statusEl) {
       c.className = 'ttt-cell' + (board[i] ? ' ' + board[i].toLowerCase() : '');
       c.disabled = over || board[i] || turn !== mySymbol();
     });
+    if (over && winner) {
+      const line = WINS.find(w => w.every(j => board[j] === winner));
+      if (line) line.forEach(j => cells[j].classList.add('win'));
+    }
     if (over) {
       status.textContent = winner ? `🎉 Vince ${winner === 'X' ? '🔴 X (Host)' : '🟡 O (Guest)'}!` : '🤝 Pareggio!';
     } else {
