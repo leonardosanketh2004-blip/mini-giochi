@@ -57,6 +57,14 @@ function renderSnake(container) {
   let food = spawnFood(), score = 0, best = +(localStorage.getItem('snakeBest')||0);
   document.getElementById('snake-best').textContent = best;
   let dead = false, loop = null;
+  let particles = [], floatTexts = [];
+
+  function burst(x, y, color, n = 14) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 3;
+      particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: 1, color });
+    }
+  }
 
   function spawnFood() {
     let f;
@@ -98,8 +106,16 @@ function renderSnake(container) {
     if (head.x===food.x && head.y===food.y) {
       score += 10;
       document.getElementById('snake-score').textContent = score;
+      burst(food.x*size+size/2, food.y*size+size/2, '#ff2d78', 18);
+      floatTexts.push({ x: food.x*size+size/2, y: food.y*size, text: '+10', life: 1 });
       food = spawnFood();
     } else snake.pop();
+
+    // aggiorna particelle e testi fluttuanti
+    particles = particles.filter(p => p.life > 0);
+    particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life -= 0.025; });
+    floatTexts = floatTexts.filter(t => t.life > 0);
+    floatTexts.forEach(t => { t.y -= 0.6; t.life -= 0.02; });
 
     ctx.fillStyle = '#080a14'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.strokeStyle = 'rgba(0,229,255,0.05)'; ctx.lineWidth = 1;
@@ -107,17 +123,55 @@ function renderSnake(container) {
       ctx.beginPath(); ctx.moveTo(i*size,0); ctx.lineTo(i*size,canvas.height); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0,i*size); ctx.lineTo(canvas.width,i*size); ctx.stroke();
     }
-    ctx.shadowBlur = 12; ctx.shadowColor = '#e94560';
-    ctx.fillStyle = '#ff2d78';
-    ctx.beginPath(); ctx.arc(food.x*size+size/2, food.y*size+size/2, size/2-2, 0, 7); ctx.fill();
+    // particelle
+    particles.forEach(p => {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    // testi fluttuanti
+    floatTexts.forEach(t => {
+      ctx.globalAlpha = t.life;
+      ctx.fillStyle = '#00e5ff';
+      ctx.font = 'bold 14px Orbitron, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(t.text, t.x, t.y);
+    });
+    ctx.globalAlpha = 1;
+
+    // cibo pulsante con glow
+    const pulse = 1 + Math.sin(Date.now()/250) * 0.15;
+    const fx = food.x*size+size/2, fy = food.y*size+size/2;
+    ctx.shadowBlur = 18; ctx.shadowColor = '#ff2d78';
+    const grad = ctx.createRadialGradient(fx, fy, 2, fx, fy, size/2);
+    grad.addColorStop(0, '#ff6b9d'); grad.addColorStop(1, '#ff2d78');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(fx, fy, (size/2-2)*pulse, 0, 7); ctx.fill();
     ctx.shadowBlur = 0;
+    // foglia del cibo
+    ctx.fillStyle = '#00ff88';
+    ctx.beginPath(); ctx.ellipse(fx+4, fy-8, 4, 2, -0.6, 0, 7); ctx.fill();
+
+    // serpente
     snake.forEach((s,i) => {
-      ctx.fillStyle = i===0 ? '#00e5ff' : `hsl(160, 70%, ${55 - i*1.5}%)`;
-      const pad = i===0 ? 1 : 2;
+      const t = i / Math.max(1, snake.length);
+      ctx.fillStyle = i===0 ? '#00e5ff' : `hsl(${165 - t*40}, 80%, ${55 - t*20}%)`;
+      const pad = i===0 ? 1 : 2 + t*2;
       ctx.beginPath();
-      ctx.roundRect(s.x*size+pad, s.y*size+pad, size-pad*2, size-pad*2, 5);
+      ctx.roundRect(s.x*size+pad, s.y*size+pad, size-pad*2, size-pad*2, 6);
       ctx.fill();
     });
+    // occhi sulla testa
+    const h = snake[0], cx = h.x*size+size/2, cy = h.y*size+size/2;
+    const ex = dir.y !== 0 ? 5 : 0, ey = dir.x !== 0 ? 5 : 0;
+    const px = -dir.y * 4, py = dir.x * 4;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx+px+ex*0.5, cy+py+ey*0.5, 3.5, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx-px+ex*0.5, cy-py+ey*0.5, 3.5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#0a0c1a';
+    ctx.beginPath(); ctx.arc(cx+px+ex*0.9, cy+py+ey*0.9, 1.8, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx-px+ex*0.9, cy-py+ey*0.9, 1.8, 0, 7); ctx.fill();
   }
 
   loop = setInterval(tick, 120);
@@ -250,6 +304,7 @@ function renderReaction(container) {
     clearTimeout(timeout);
     state = 'waiting';
     area.style.background = '#c0392b';
+    area.style.boxShadow = '0 0 40px rgba(255,45,120,0.4), inset 0 0 60px rgba(0,0,0,0.4)';
     area.textContent = 'Aspetta il VERDE...';
     result.textContent = '';
     btn.disabled = true;
@@ -258,6 +313,7 @@ function renderReaction(container) {
       state = 'go';
       startTime = performance.now();
       area.style.background = '#27ae60';
+      area.style.boxShadow = '0 0 60px rgba(0,255,136,0.5), inset 0 0 60px rgba(0,0,0,0.3)';
       area.textContent = 'CLICCA!';
     }, delay);
   };
@@ -267,13 +323,15 @@ function renderReaction(container) {
       clearTimeout(timeout);
       state = 'idle';
       area.style.background = '#c0392b';
+      area.style.boxShadow = '0 0 40px rgba(255,45,120,0.4)';
       area.textContent = 'Troppo presto! Riprova.';
       result.textContent = '❌ Hai cliccato prima del verde.';
       btn.disabled = false;
     } else if (state === 'go') {
       const ms = Math.round(performance.now() - startTime);
       state = 'idle';
-      area.style.background = '#333';
+      area.style.background = '#1a1f35';
+      area.style.boxShadow = 'none';
       area.textContent = 'Premi START per giocare ancora';
       result.innerHTML = `⚡ Tempo di reazione: <b>${ms} ms</b> ${ms<200?'🚀 Fulmine!':ms<350?'👍 Ottimo':ms<500?'👌 Bene':'🐢 Puoi fare di meglio'}`;
       btn.disabled = false;
@@ -833,6 +891,7 @@ function renderPong(container) {
   let me = { x: 20, y: H/2 - ph/2 }, cpu = { x: W-20-pw, y: H/2 - ph/2 };
   let ball = { x: W/2, y: H/2, vx: 5, vy: 3 };
   let meScore = 0, cpuScore = 0, running = true, loop = null, speed = 5;
+  let trail = [], particles = [];
 
   document.addEventListener('keydown', onKey);
   function onKey(e) {
@@ -843,6 +902,13 @@ function renderPong(container) {
     const r = canvas.getBoundingClientRect();
     me.y = Math.max(0, Math.min(H - ph, (e.clientY - r.top) * (H / r.height) - ph/2));
   });
+
+  function burst(x, y, color, n = 12) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 3.5;
+      particles.push({ x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp, life: 1, color });
+    }
+  }
 
   function resetBall(dir) {
     ball = { x: W/2, y: H/2, vx: dir * speed, vy: (Math.random()*6-3) };
@@ -862,15 +928,17 @@ function renderPong(container) {
     if (ball.vx < 0 && ball.x - ballR <= me.x + pw && ball.x - ballR >= me.x - ballR && ball.y > me.y - ballR && ball.y < me.y + ph + ballR) {
       ball.vx = Math.abs(ball.vx) * 1.05; ball.vy += (ball.y - (me.y + ph/2)) * 0.15;
       ball.x = me.x + pw + ballR;
+      burst(ball.x, ball.y, '#00e5ff');
     }
     // paddle cpu
     if (ball.vx > 0 && ball.x + ballR >= cpu.x && ball.x + ballR <= cpu.x + pw + ballR && ball.y > cpu.y - ballR && ball.y < cpu.y + ph + ballR) {
       ball.vx = -Math.abs(ball.vx) * 1.05; ball.vy += (ball.y - (cpu.y + ph/2)) * 0.15;
       ball.x = cpu.x - ballR;
+      burst(ball.x, ball.y, '#ff2d78');
     }
 
-    if (ball.x < -20) { cpuScore++; document.getElementById('pong-cpu').textContent = cpuScore; resetBall(1); }
-    if (ball.x > W + 20) { meScore++; document.getElementById('pong-me').textContent = meScore; resetBall(-1); }
+    if (ball.x < -20) { cpuScore++; document.getElementById('pong-cpu').textContent = cpuScore; burst(30, ball.y, '#ff2d78', 25); resetBall(1); }
+    if (ball.x > W + 20) { meScore++; document.getElementById('pong-me').textContent = meScore; burst(W-30, ball.y, '#00e5ff', 25); resetBall(-1); }
     if (meScore >= 7 || cpuScore >= 7) {
       running = false; clearInterval(loop);
       document.removeEventListener('keydown', onKey);
@@ -886,14 +954,43 @@ function renderPong(container) {
       return;
     }
 
+    // aggiorna particelle e scia
+    particles = particles.filter(p => p.life > 0);
+    particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.03; });
+    trail.push({ x: ball.x, y: ball.y });
+    if (trail.length > 14) trail.shift();
+
     ctx.fillStyle = '#080a14'; ctx.fillRect(0,0,W,H);
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.setLineDash([6,8]);
+    // rete animata
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.setLineDash([6,10]);
+    ctx.lineDashOffset = -Date.now()/50;
     ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke(); ctx.setLineDash([]);
-    ctx.shadowBlur = 15; ctx.shadowColor = '#00e5ff';
-    ctx.fillStyle = '#00e5ff'; ctx.fillRect(me.x, me.y, pw, ph);
-    ctx.shadowColor = '#ff2d78'; ctx.fillStyle = '#ff2d78'; ctx.fillRect(cpu.x, cpu.y, pw, ph);
-    ctx.shadowBlur = 0; ctx.fillStyle = '#fff';
+    // particelle
+    particles.forEach(p => {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    // scia della palla
+    trail.forEach((t, i) => {
+      ctx.globalAlpha = (i / trail.length) * 0.35;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(t.x, t.y, ballR * (i/trail.length), 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    // paddle arrotondati con glow
+    ctx.shadowBlur = 18; ctx.shadowColor = '#00e5ff';
+    ctx.fillStyle = '#00e5ff';
+    ctx.beginPath(); ctx.roundRect(me.x, me.y, pw, ph, 6); ctx.fill();
+    ctx.shadowColor = '#ff2d78'; ctx.fillStyle = '#ff2d78';
+    ctx.beginPath(); ctx.roundRect(cpu.x, cpu.y, pw, ph, 6); ctx.fill();
+    ctx.shadowBlur = 0;
+    // palla con glow
+    ctx.shadowBlur = 20; ctx.shadowColor = '#ffffff';
+    ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(ball.x, ball.y, ballR, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
   }
 
   loop = setInterval(tick, 1000/60);
@@ -1007,7 +1104,8 @@ function renderAim(container) {
     t.addEventListener('click', (e) => {
       e.stopPropagation();
       hits++; score++;
-      t.remove();
+      t.classList.add('hit');
+      setTimeout(() => t.remove(), 250);
       updateHud();
       spawnTarget();
     });

@@ -376,10 +376,11 @@ footer {
   display: flex; align-items: center; justify-content: center;
   font-size: 1.5rem; font-weight: 700;
   cursor: pointer; user-select: none;
-  transition: background 0.15s, box-shadow 0.3s;
+  transition: background 0.15s, box-shadow 0.3s, transform 0.1s;
   text-align: center; padding: 1rem; line-height: 1.5;
   border: 1px solid var(--border);
 }
+.reaction-area:active { transform: scale(0.98); }
 .reaction-result { margin-top: 1.2rem; font-size: 1.2rem; }
 .reaction-result b { color: var(--neon-cyan); font-family: 'Orbitron', sans-serif; }
 
@@ -466,9 +467,18 @@ footer {
   width: 48px; height: 48px;
   transform: translate(-50%,-50%);
   cursor: pointer;
-  animation: targetIn 0.15s ease backwards;
+  animation: targetIn 0.15s ease backwards, targetPulse 1s ease-in-out 0.15s infinite;
 }
 @keyframes targetIn { from { transform: translate(-50%,-50%) scale(0); } to { transform: translate(-50%,-50%) scale(1); } }
+@keyframes targetPulse {
+  0%,100% { filter: drop-shadow(0 0 8px rgba(255,45,120,0.5)); }
+  50% { filter: drop-shadow(0 0 22px rgba(255,45,120,0.95)); }
+}
+.aim-target.hit { animation: targetHit 0.25s ease forwards; pointer-events: none; }
+@keyframes targetHit {
+  0% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(2.2); opacity: 0; }
+}
 .aim-target::before {
   content: ''; position: absolute; inset: 0;
   border-radius: 50%;
